@@ -48,7 +48,7 @@ npm install scrub-log
 Run it straight from a checkout without installing anything:
 
 ```sh
-git clone https://github.com/__GITHUB_HANDLE__/scrub-log.git
+git clone https://github.com/xwellames/scrub-log.git
 cd scrub-log
 node --test
 node bin/scrub-log.js "hello"
