@@ -21,21 +21,13 @@ blob, are replaced with a marker before a single byte is written.
 
 ## Contents
 
-- [Why redaction matters](#why-redaction-matters)
-- [Install](#install)
 - [Usage](#usage)
   - [Levels](#levels)
 - [Redaction rules](#redaction-rules)
-  - [Why these patterns are safe to run on untrusted input](#why-these-patterns-are-safe-to-run-on-untrusted-input)
-  - [Structural guarantees](#structural-guarantees)
-- [Library API](#library-api)
   - [`createLogger(options?)`](#createloggeroptions)
   - [`redact(value, options?)`](#redactvalue-options)
   - [Level helpers](#level-helpers)
   - [Formatters](#formatters)
-  - [Command line](#command-line)
-- [Running tests](#running-tests)
-- [License](#license)
 
 <!-- /hero -->
 
