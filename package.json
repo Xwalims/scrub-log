@@ -1,0 +1,34 @@
+{
+  "name": "scrub-log",
+  "version": "0.1.0",
+  "description": "Zero-dependency structured logger with automatic secret redaction for ndjson and pretty output.",
+  "keywords": [
+    "logging",
+    "logger",
+    "structured-logging",
+    "ndjson",
+    "redaction",
+    "secrets",
+    "zero-dependency"
+  ],
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "bin": {
+    "scrub-log": "bin/scrub-log.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
