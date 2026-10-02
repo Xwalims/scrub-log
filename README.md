@@ -12,6 +12,33 @@ blob, are replaced with a marker before a single byte is written.
 - 127 tests using the built-in `node:test` runner.
 - Redaction is on by default and cannot be forgotten at a call site.
 
+<!-- hero -->
+
+[![CI](https://github.com/scrub-log/actions/workflows/ci.yml/badge.svg)](https://github.com/scrub-log/actions/workflows/ci.yml)
+![node 20+](https://img.shields.io/badge/node-20+-brightgreen)
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![dependencies](https://img.shields.io/badge/dependencies-none-2f6f4f)
+
+## Contents
+
+- [Why redaction matters](#why-redaction-matters)
+- [Install](#install)
+- [Usage](#usage)
+  - [Levels](#levels)
+- [Redaction rules](#redaction-rules)
+  - [Why these patterns are safe to run on untrusted input](#why-these-patterns-are-safe-to-run-on-untrusted-input)
+  - [Structural guarantees](#structural-guarantees)
+- [Library API](#library-api)
+  - [`createLogger(options?)`](#createloggeroptions)
+  - [`redact(value, options?)`](#redactvalue-options)
+  - [Level helpers](#level-helpers)
+  - [Formatters](#formatters)
+  - [Command line](#command-line)
+- [Running tests](#running-tests)
+- [License](#license)
+
+<!-- /hero -->
+
 ## Why redaction matters
 
 Logs are copied. They are shipped to aggregation services, attached to bug
