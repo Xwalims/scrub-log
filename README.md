@@ -167,7 +167,7 @@ Hub token rather than as an anonymous secret.
 | `aws-access-key-id`     | `AKIA`, `ASIA`, `AGPA`, `AIDA`, `AROA`, `ANPA` plus 12 to 20 chars     | `[REDACTED_AWS_ACCESS_KEY_ID]`      | `AKIAIOSFODNN7EXAMPLE`                      |
 | `aws-secret-access-key` | `aws_secret_access_key` followed by 40 characters                     | `[REDACTED_AWS_SECRET_ACCESS_KEY]`  | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
 | `github-token`          | `ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_` and `github_pat_` prefixes     | `[REDACTED_GITHUB_TOKEN]`           | `ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789`   |
-| `slack-token`           | `xoxb-`, `xoxa-`, `xoxp-`, `xoxr-`, `xoxs-` prefixes                  | `[REDACTED_SLACK_TOKEN]`            | `SLACK_TOKEN_FIXTURE`   |
+| `slack-token`           | `xoxb-`, `xoxa-`, `xoxp-`, `xoxr-`, `xoxs-` prefixes                  | `[REDACTED_SLACK_TOKEN]`            | see `test/redact.test.js` |
 | `credit-card`           | 13 to 19 digits that pass the Luhn checksum                           | `[REDACTED_CREDIT_CARD]`            | `4111111111111111`                         |
 | `secret-key-value`      | `key: value` and `key=value` for secret-looking names                  | `[REDACTED]`                        | `password=hunter2`                         |
 | `ipv4`                  | IPv4 addresses, only when `redactIp` is enabled                        | `[REDACTED_IP]`                     | `10.0.0.1`                                 |
