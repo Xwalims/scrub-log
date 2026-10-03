@@ -14,7 +14,7 @@ blob, are replaced with a marker before a single byte is written.
 
 <!-- hero -->
 
-[![CI](https://github.com/scrub-log/actions/workflows/ci.yml/badge.svg)](https://github.com/scrub-log/actions/workflows/ci.yml)
+[![CI](https://github.com/Xwalims/scrub-log/actions/workflows/ci.yml/badge.svg)](https://github.com/Xwalims/scrub-log/actions/workflows/ci.yml)
 ![node 20+](https://img.shields.io/badge/node-20+-brightgreen)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![dependencies](https://img.shields.io/badge/dependencies-none-2f6f4f)
@@ -58,13 +58,8 @@ environment variable or a secret manager.
 
 ## Install
 
-The package has no dependencies, so a plain install is enough:
-
-```sh
-npm install scrub-log
-```
-
-Run it straight from a checkout without installing anything:
+This package is **not published to npm** — the name is unregistered, so
+`npm install scrub-log` fails. Clone and run it directly:
 
 ```sh
 git clone https://github.com/Xwalims/scrub-log.git
@@ -72,6 +67,8 @@ cd scrub-log
 node --test
 node bin/scrub-log.js "hello"
 ```
+
+To get the `scrub-log` command on your `PATH`, use `npm link` from the checkout.
 
 ## Usage
 
