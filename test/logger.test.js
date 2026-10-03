@@ -303,6 +303,27 @@ test('createLogger rejects an unknown format', () => {
   assert.throws(() => createLogger({ format: 'xml' }), TypeError);
 });
 
+test('a Map field does not smuggle a secret past the logger', () => {
+  // The leak only shows up at the record level: `redact` hands back a Map entry
+  // array, and the secret is still in it unless the entry key goes through the
+  // secret-key policy.
+  const stream = createFakeStream();
+  const log = createLogger({ stream });
+  log.info('db connect', {
+    creds: new Map([
+      ['password', 'hunter2'],
+      ['host', 'db.internal'],
+    ]),
+  });
+
+  const record = stream.records()[0];
+  assert.deepEqual(record.creds, [
+    ['password', REDACTED],
+    ['host', 'db.internal'],
+  ]);
+  assert.ok(!stream.output().includes('hunter2'));
+});
+
 test('a circular field does not break logging', () => {
   const stream = createFakeStream();
   const log = createLogger({ stream });

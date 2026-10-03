@@ -9,7 +9,7 @@ in log output by accident, because somebody logged a request object or a config
 blob, are replaced with a marker before a single byte is written.
 
 - Zero runtime dependencies. CommonJS, Node.js 20 or newer.
-- 127 tests using the built-in `node:test` runner.
+- 132 tests using the built-in `node:test` runner.
 - Redaction is on by default and cannot be forgotten at a call site.
 
 <!-- hero -->
@@ -283,6 +283,11 @@ Objects, arrays, strings, `Error` instances, `Map`, `Set`, `Date` and `RegExp`
 are handled. Buffers and typed arrays are replaced with `'[Binary]'` rather than
 decoded. Primitives pass through unchanged.
 
+A `Map` becomes an array of entries, and the secret-key policy is applied to the
+entry key as well as to its value: `new Map([['password', 'hunter2']])` is
+redacted, exactly as `{ password: 'hunter2' }` is. A non-string key cannot name a
+secret, so it is walked as a value like any other.
+
 ### Level helpers
 
 - `LEVELS`, `LEVEL_NAMES` — the level table and its names in ascending order.
@@ -333,9 +338,9 @@ real standard output, except in `test/cli.test.js`, which spawns the real binary
 with `child_process.spawnSync` and asserts on exit codes and captured stdout.
 
 ```
-ℹ tests 127
+ℹ tests 132
 ℹ suites 0
-ℹ pass 127
+ℹ pass 132
 ℹ fail 0
 ```
 

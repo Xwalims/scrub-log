@@ -295,6 +295,53 @@ test('redact converts Date, RegExp, Map and Set', () => {
   assert.deepEqual(output.unique, ['[REDACTED_EMAIL]']);
 });
 
+test('redact applies the secret-key policy to Map keys', () => {
+  // A Map entry carries a name just like an object property does, so a secret
+  // stored under `password` must be replaced wholesale, exactly as it would be
+  // in the equivalent plain object.
+  const output = redact(
+    new Map([
+      ['password', 'hunter2'],
+      ['api_key', 'abc123XYZ'],
+      ['user', 'bob'],
+    ])
+  );
+  assert.deepEqual(output, [
+    ['password', REDACTED],
+    ['api_key', REDACTED],
+    ['user', 'bob'],
+  ]);
+});
+
+test('redact applies the secret-key policy to Map keys nested in objects', () => {
+  const output = redact({
+    db: new Map([
+      ['host', 'db.internal'],
+      ['credentials', { password: 'hunter2', port: 5432 }],
+      ['auth', { headers: { authorization: 'Bearer abcdefgh12345' } }],
+    ]),
+  });
+  assert.deepEqual(output.db, [
+    ['host', 'db.internal'],
+    ['credentials', REDACTED],
+    ['auth', { headers: { authorization: REDACTED } }],
+  ]);
+});
+
+test('redact scrubs a non-string Map key without crashing', () => {
+  const output = redact(new Map([[42, 'user@example.com'], [null, 'x']]));
+  assert.deepEqual(output, [
+    [42, '[REDACTED_EMAIL]'],
+    [null, 'x'],
+  ]);
+});
+
+test('redact still detects a cycle through a Map', () => {
+  const cyclic = new Map();
+  cyclic.set('self', cyclic);
+  assert.deepEqual(redact(cyclic), [['self', CIRCULAR]]);
+});
+
 test('redact drops binary payloads instead of decoding them', () => {
   assert.equal(redact({ blob: Buffer.from('secret') }).blob, '[Binary]');
 });

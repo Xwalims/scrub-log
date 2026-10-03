@@ -375,9 +375,13 @@ function redactValue(value, options, path = new WeakSet(), depth = 0) {
       return redactError(value, options, path, depth);
     }
     if (value instanceof Map) {
+      // A Map entry names its value just like an object property does, so the
+      // secret-key policy has to see the entry key too: `new Map([['password',
+      // 'hunter2']])` must be redacted, exactly as `{ password: 'hunter2' }` is.
+      // A non-string key falls through `isSecretKey` and is walked as a value.
       return Array.from(value, ([key, item]) => [
         redactValue(key, options, path, depth + 1),
-        redactValue(item, options, path, depth + 1),
+        redactProperty(key, item, options, path, depth + 1),
       ]);
     }
     if (value instanceof Set) {
