@@ -24,7 +24,8 @@ blob, are replaced with a marker before a single byte is written.
 - [Usage](#usage)
   - [Levels](#levels)
 - [Redaction rules](#redaction-rules)
-  - [`createLogger(options?)`](#createloggeroptions)
+  - [Field names that collide with the prototype](#field-names-that-collide-with-the-prototype)
+- [`createLogger(options?)`](#createloggeroptions)
   - [`redact(value, options?)`](#redactvalue-options)
   - [Level helpers](#level-helpers)
   - [Formatters](#formatters)
@@ -225,6 +226,60 @@ characters and asserts the call completes well under a second.
 - `redact` never mutates its input; it returns a copy.
 - Redaction is idempotent. Running it twice produces the same string, so a value
   that has already been redacted is not mangled further.
+- A field named `__proto__` is data like any other. `JSON.parse` creates a real
+  own property for that key name, and so does this library; see
+  [Field names that collide with the prototype](#field-names-that-collide-with-the-prototype).
+- Neither formatter throws on a value that has no callable `toString`. Header
+  fields and field values are rendered through `displayValue`, which falls back
+  to `'[Unserialisable]'` instead of letting `ToPrimitive` raise.
+
+### Field names that collide with the prototype
+
+`__proto__` is not a property of `Object.prototype`; it is an **accessor**
+defined on it. So `target[key] = value` is not the same as "create a property
+called `key`" for that one name: the assignment runs the setter, which replaces
+the prototype of `target` and creates no key at all. The record then serialises
+without the field, so the data is deleted and nothing reports it.
+
+`__proto__` is a perfectly legal JSON member name, and a record assembled from
+untrusted input may well carry one. `scrub-log` copies every data-derived key
+with `Object.defineProperty` for this name, which is exactly what `JSON.parse`
+does for the same bytes:
+
+```js
+const record = JSON.parse('{"msg":"m","__proto__":{"role":"admin"}}');
+
+ndjson()(record);
+// '{"msg":"m","__proto__":{"role":"admin"}}\n'
+
+redact(record);
+// { msg: 'm', __proto__: { role: 'admin' } }
+```
+
+Before the fix the same two calls returned `'{"msg":"m"}\n'` and
+`{ msg: 'm' }`. The object also came back with the attacker-shaped payload as its
+**prototype**, so an ordinary property read such as `record.role` returned
+`'admin'` for a field the record never contained — a log redactor that invents
+the field it reports on.
+
+`constructor`, `toString`, `valueOf` and `hasOwnProperty` are deliberately left
+alone. Those are ordinary data properties on the prototype, so plain assignment
+shadows them correctly and the output stays faithful to the input; escaping them
+would itself be a bug. There is a test asserting both directions.
+
+The redaction walk and the logger's field merge (`Object.assign` and object
+spread, both of which are assignment in disguise) are covered by
+`test/proto-keys.test.js`, and a cross-seed differential oracle checks the
+property:
+
+```sh
+node scripts/oracle-proto-keys.js <seed> <rounds>
+```
+
+It generates random documents that use prototype-colliding key names, parses
+them with `JSON.parse` so the input genuinely holds own `__proto__` properties,
+and asserts that `redact`, `ndjson` and the full logger path all expose exactly
+the own-key set `JSON.parse` defines, with `Object.prototype` left in place.
 
 ## Library API
 
@@ -338,13 +393,24 @@ real standard output, except in `test/cli.test.js`, which spawns the real binary
 with `child_process.spawnSync` and asserts on exit codes and captured stdout.
 
 ```
-ℹ tests 132
+ℹ tests 151
 ℹ suites 0
-ℹ pass 132
+ℹ pass 151
 ℹ fail 0
 ```
 
 CI runs the same command on Node.js 20, 22 and 24.
+
+Two extra harnesses check the properties that a unit test can only sample:
+
+```sh
+bash scripts/verify-proto-regression.sh   # each fix reverted in turn; the suite must fail
+bash scripts/verify-oracle.sh             # cross-seed differential run against JSON.parse
+```
+
+`verify-proto-regression.sh` restores `src/` from a backup before every scenario
+and reverts exactly one fix, so a passing suite means the tests genuinely detect
+the old behaviour rather than merely agreeing with the new code.
 
 ## License
 

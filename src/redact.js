@@ -239,6 +239,42 @@ function redactString(input, options) {
 }
 
 /**
+ * Copy one own property onto `target` without ever invoking the
+ * `Object.prototype.__proto__` accessor.
+ *
+ * `target[key] = value` is not the same thing as "copy this key" for every
+ * possible key name: `__proto__` is an ACCESSOR inherited from
+ * `Object.prototype`, so plain assignment runs the setter and REPLACES THE
+ * PROTOTYPE of `target` rather than creating an own key. Both walk sites in
+ * this module iterate `Object.keys(value)`, which means for the one legal
+ * field name `__proto__` they are holding a real own data property — exactly
+ * what `JSON.parse('{"__proto__":{"a":1}}')` produces — and would then drop
+ * it. The value under it would reach no redaction rule at all, and the
+ * rebuilt object would carry the attacker's object as its prototype.
+ *
+ * Only `__proto__` needs this. `constructor`, `toString`, `valueOf` and
+ * `hasOwnProperty` are ordinary data properties on the prototype, so plain
+ * assignment shadows them correctly and escaping those would itself be a bug.
+ *
+ * @param {object} target Object to write to.
+ * @param {string} key Own key name taken from the input.
+ * @param {unknown} value Value to store.
+ * @returns {void}
+ */
+function assignKey(target, key, value) {
+  if (key === '__proto__') {
+    Object.defineProperty(target, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    return;
+  }
+  target[key] = value;
+}
+
+/**
  * Report whether a property name denotes a secret.
  *
  * The comparison ignores case and separators, so `apiKey`, `api_key` and
@@ -306,7 +342,7 @@ function redactError(error, options, path, depth) {
     if (key === 'cause' || key === 'name' || key === 'message' || key === 'stack') {
       continue;
     }
-    result[key] = redactProperty(key, error[key], options, path, depth);
+    assignKey(result, key, redactProperty(key, error[key], options, path, depth));
   }
   return result;
 }
@@ -397,9 +433,13 @@ function redactValue(value, options, path = new WeakSet(), depth = 0) {
     }
 
     // Plain object: rebuild with the original insertion order of `Object.keys`.
+    // `assignKey` is required, not cosmetic: for the one key name `__proto__`
+    // an own data property (which is what `Object.keys(value)` just listed)
+    // would be dropped by plain assignment, and the value under it would
+    // never be inspected by any redaction rule.
     const output = {};
     for (const key of Object.keys(value)) {
-      output[key] = redactProperty(key, value[key], options, path, depth + 1);
+      assignKey(output, key, redactProperty(key, value[key], options, path, depth + 1));
     }
     return output;
   } finally {

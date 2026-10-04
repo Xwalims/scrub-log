@@ -2,7 +2,26 @@
 
 const { LEVELS, fromName, isLevel, shouldLog, toLevel } = require('./levels.js');
 const { redact } = require('./redact.js');
-const { resolveFormatter } = require('./formatter.js');
+const { resolveFormatter, assignKey } = require('./formatter.js');
+
+/**
+ * Copy every own key of `source` onto `target`.
+ *
+ * Object spread cannot be used for this: `{...source}` creates own properties
+ * (so `__proto__` survives), but `base` is also re-spread later, and a spread
+ * of an object whose prototype was retargeted copies nothing useful. The one
+ * mechanism that is correct for a data-derived key name is `assignKey`, so
+ * every merge in this module goes through it.
+ *
+ * @param {object} target Object to write to.
+ * @param {object} source Object to copy own enumerable keys from.
+ * @returns {void}
+ */
+function assignAll(target, source) {
+  for (const key of Object.keys(source)) {
+    assignKey(target, key, source[key]);
+  }
+}
 
 /**
  * Logger implementation.
@@ -148,12 +167,23 @@ function createLogger(options = {}) {
       time: new Date().toISOString(),
       level: levelName,
       msg: typeof msg === 'string' ? msg : displayMessage(msg),
-      ...base,
     };
+    assignAll(record, base);
     if (name !== undefined) {
       record.name = name;
     }
-    Object.assign(record, extra);
+    // Field names come from the caller, so they come from DATA. `Object.assign`
+    // cannot be used here: it is `=` under the hood, so a field literally named
+    // `__proto__` would run the inherited accessor and swap the record's
+    // prototype instead of becoming a field. That is silent, and it hands an
+    // attacker-shaped object to whatever later inspects the record. A computed
+    // key in the literal above is likewise the wrong tool — `{'__proto__': v}`
+    // is a prototype-setting shorthand while `{['__proto__']: v}` is an own
+    // property, and the difference is easy to miss. `assignKey` does the one
+    // thing that is always correct.
+    for (const key of Object.keys(extra)) {
+      assignKey(record, key, extra[key]);
+    }
 
     const payload = redactEnabled ? redact(record, redactOptions) : record;
     write(formatter(payload));
@@ -232,10 +262,16 @@ function createLogger(options = {}) {
       if (bindings === null || typeof bindings !== 'object' || Array.isArray(bindings)) {
         throw new TypeError('child bindings must be a plain object');
       }
+      // Parent bindings first, so a child binding of the same name wins. The
+      // merge is explicit rather than `{...base, ...bindings}` because both
+      // sides have data-derived keys; see assignAll.
+      const merged = {};
+      assignAll(merged, base);
+      assignAll(merged, bindings);
       return createLogger({
         ...options,
         name: bindings.name === undefined ? name : bindings.name,
-        base: { ...base, ...bindings },
+        base: merged,
       });
     },
   };

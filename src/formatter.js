@@ -85,6 +85,49 @@ function displayValue(value) {
 }
 
 /**
+ * Copy one own property onto `target` without ever invoking the
+ * `Object.prototype.__proto__` accessor.
+ *
+ * `target[key] = value` is not the same thing as "copy this key" for every
+ * possible key name: `__proto__` is an ACCESSOR inherited from
+ * `Object.prototype`, so plain assignment runs the setter and REPLACES THE
+ * PROTOTYPE of `target` instead of creating an own key. A record field called
+ * `__proto__` is a legal field name — `JSON.parse('{"__proto__":{"a":1}}')`
+ * produces an own data property for exactly those bytes — so dropping it is
+ * data loss, and the dropped value is not even visible in the output to hint
+ * at it:
+ *
+ *     const rec = JSON.parse('{"msg":"m","__proto__":{"role":"admin"}}');
+ *     JSON.stringify(rec);           // {"msg":"m","__proto__":{"role":"admin"}}
+ *     const ordered = {};
+ *     ordered['__proto__'] = {...};  // setter ran
+ *     JSON.stringify(ordered);       // {"msg":"m"} -- field gone
+ *
+ * `Object.defineProperty` creates a real own data property, matching
+ * `JSON.parse`. Only `__proto__` needs this: `constructor`, `toString`,
+ * `valueOf` and `hasOwnProperty` are ordinary data properties on the
+ * prototype, so plain assignment shadows them correctly and escaping those
+ * would itself be a bug.
+ *
+ * @param {object} target Object to write to.
+ * @param {string} key Own key name taken from the record.
+ * @param {unknown} value Value to store.
+ * @returns {void}
+ */
+function assignKey(target, key, value) {
+  if (key === '__proto__') {
+    Object.defineProperty(target, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+    return;
+  }
+  target[key] = value;
+}
+
+/**
  * Build the record object shared by both formatters.
  *
  * The key order is fixed here so `ndjson` output is stable across runs and
@@ -110,7 +153,7 @@ function orderRecord(record) {
     ordered.name = name;
   }
   for (const key of Object.keys(rest)) {
-    ordered[key] = rest[key];
+    assignKey(ordered, key, rest[key]);
   }
   return ordered;
 }
@@ -157,14 +200,23 @@ function pretty(options = {}) {
     const paint = (text, colour) => (color ? `${ANSI[colour]}${text}${ANSI.reset}` : text);
 
     const parts = [];
+    // Every header field is rendered through `displayValue` rather than
+    // interpolated. A template literal calls `ToPrimitive`, which throws for a
+    // value with no callable `toString` whose `valueOf` returns an object — an
+    // array holding `{"toString":null}` reaches that state, and any record
+    // assembled from JSON carrying that field will too. The logger accepts a
+    // record object as documented, so none of these four fields may assume it
+    // came from the logger's own `emit` path, where `msg` is already a string.
     if (time !== undefined) {
-      parts.push(color ? `${ANSI.dim}${time}${ANSI.reset}` : time);
+      const rendered = displayValue(time);
+      parts.push(color ? `${ANSI.dim}${rendered}${ANSI.reset}` : rendered);
     }
     if (level !== undefined) {
-      parts.push(paint(String(level).toUpperCase().padEnd(width), LEVEL_COLORS[String(level)] || 'reset'));
+      const rendered = displayValue(level);
+      parts.push(paint(rendered.toUpperCase().padEnd(width), LEVEL_COLORS[rendered] || 'reset'));
     }
     if (name !== undefined) {
-      parts.push(`[${name}]`);
+      parts.push(`[${displayValue(name)}]`);
     }
     for (const key of Object.keys(rest)) {
       parts.push(`${key}=${displayValue(rest[key])}`);
@@ -172,7 +224,8 @@ function pretty(options = {}) {
 
     let line = parts.join(' ');
     if (msg !== undefined) {
-      line = line.length > 0 ? `${line} ${msg}` : String(msg);
+      const rendered = displayValue(msg);
+      line = line.length > 0 ? `${line} ${rendered}` : rendered;
     } else {
       // Drop the separator left by the padded level so the line has no trailing
       // whitespace when a record carries no message.
@@ -211,6 +264,7 @@ function resolveFormatter(format, options = {}) {
 module.exports = {
   ANSI,
   LEVEL_COLORS,
+  assignKey,
   displayValue,
   ndjson,
   orderRecord,
