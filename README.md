@@ -9,7 +9,7 @@ in log output by accident, because somebody logged a request object or a config
 blob, are replaced with a marker before a single byte is written.
 
 - Zero runtime dependencies. CommonJS, Node.js 20 or newer.
-- 132 tests using the built-in `node:test` runner.
+- 151 tests using the built-in `node:test` runner.
 - Redaction is on by default and cannot be forgotten at a call site.
 
 <!-- hero -->
